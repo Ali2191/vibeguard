@@ -7,7 +7,7 @@ name = "vibe-guard"
 version = "1.0.0"
 description = "AI-powered security scanner for detecting vulnerabilities in generated code"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Tayyab Ali", email = "tayyab@example.com"}
