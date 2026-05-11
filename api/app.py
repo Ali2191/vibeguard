@@ -2,13 +2,14 @@ import os
 import uuid
 import shutil
 import tempfile
+import zipfile
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from core.scanner import scan_path
-from output.report import generate_html_report
-from models.gemini_explainer import explain_all
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="VibeGuard API", version="1.0.0")
 
@@ -19,7 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-report_store = {}
+# In-memory store — works for serverless cold starts
+report_store: dict[str, str] = {}
 
 LANDING_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -95,7 +97,7 @@ LANDING_HTML = """<!DOCTYPE html>
 
 <div class="hero">
   <h1>Your AI wrote the code.<br><em>We check if it's safe.</em></h1>
-  <p>VibeGuard scans vibe-coded repos for the 12 most common security vulnerabilities AI tools introduce without telling you.</p>
+  <p>VibeGuard scans vibe-coded repos for the most common security vulnerabilities AI tools introduce without telling you.</p>
 
   <div class="upload-card">
     <h2>Scan your project</h2>
@@ -140,17 +142,17 @@ LANDING_HTML = """<!DOCTYPE html>
   <div class="feature">
     <div class="feat-icon">&#128137;</div>
     <h3>Injection vulnerabilities</h3>
-    <p>Catches SQL injection via string concatenation, eval() abuse, and os.system() with user input.</p>
+    <p>Catches SQL injection, eval() abuse, pickle deserialization, and path traversal attacks.</p>
   </div>
   <div class="feature">
     <div class="feat-icon">&#128737;</div>
     <h3>Auth & config issues</h3>
-    <p>Detects client-side auth, missing rate limiting, wildcard CORS, unvalidated uploads, and debug mode.</p>
+    <p>Detects client-side auth, missing rate limiting, wildcard CORS, SSL disabled, and debug mode.</p>
   </div>
 </div>
 
 <div class="checks">
-  <h3>34 checks run on every scan</h3>
+  <h3>22+ checks run on every scan</h3>
   <div class="check-grid">
     <div class="check-item">Hardcoded API keys</div>
     <div class="check-item">Client-side auth</div>
@@ -164,33 +166,19 @@ LANDING_HTML = """<!DOCTYPE html>
     <div class="check-item">Unvalidated uploads</div>
     <div class="check-item">Debug mode in prod</div>
     <div class="check-item">High-entropy strings</div>
-    <div class="check-item">Fake/hallucinated packages</div>
-    <div class="check-item">Suspicious package names</div>
-    <div class="check-item">Console log leaks</div>
-    <div class="check-item">SSL verification disabled</div>
-    <div class="check-item">Pickle deserialization</div>
-    <div class="check-item">YAML unsafe load</div>
+    <div class="check-item">Hallucinated packages</div>
+    <div class="check-item">Sensitive data in logs</div>
+    <div class="check-item">SSL verification off</div>
+    <div class="check-item">Unsafe deserialization</div>
     <div class="check-item">Path traversal</div>
-    <div class="check-item">HTTP URLs in code</div>
+    <div class="check-item">Non-HTTPS URLs</div>
     <div class="check-item">Stack trace exposure</div>
-    <div class="check-item">.env file commits</div>
-    <div class="check-item">Inline secrets in URLs</div>
-    <div class="check-item">Hardcoded IP addresses</div>
-    <div class="check-item">Sensitive comments</div>
-    <div class="check-item">Subprocess shell=True</div>
-    <div class="check-item">Dynamic import risks</div>
-    <div class="check-item">XML external entities</div>
-    <div class="check-item">CSRF protection missing</div>
-    <div class="check-item">JWT none algorithm</div>
-    <div class="check-item">Temp file vulnerabilities</div>
-    <div class="check-item">Regex DoS patterns</div>
-    <div class="check-item">Weak random generation</div>
-    <div class="check-item">Verbose error messages</div>
+    <div class="check-item">Unsafe YAML load</div>
   </div>
 </div>
 
 <footer>
-  VibeGuard &mdash; built for the vibe-coding era &nbsp;&middot;&nbsp; <a href="/docs" style="color: #888;">API docs</a>
+  VibeGuard &mdash; built for the vibe-coding era &nbsp;&middot;&nbsp;  <a href="https://github.com/Ali2191/vibeguard" style="color:#888;">GitHub</a>
 </footer>
 
 <script>
@@ -236,7 +224,7 @@ async function startScan() {
   const messages = [
     'Uploading your project...',
     'Parsing files...',
-    'Running security checks...',
+    'Running 22+ security checks...',
     mode === 'ai' ? 'Generating AI fix suggestions...' : 'Generating report...',
   ];
   let mi = 0;
@@ -248,7 +236,10 @@ async function startScan() {
   try {
     const res = await fetch('/scan', { method: 'POST', body: formData });
     clearInterval(ticker);
-    if (!res.ok) throw new Error('Scan failed');
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
     const data = await res.json();
     window.location.href = '/report/' + data.report_id;
   } catch (err) {
@@ -286,7 +277,6 @@ async def scan_endpoint(
             content = await file.read()
             f.write(content)
 
-        import zipfile
         extract_dir = os.path.join(tmp_dir, 'project')
         os.makedirs(extract_dir)
         with zipfile.ZipFile(zip_path, 'r') as z:
@@ -312,6 +302,10 @@ async def scan_endpoint(
             "files_scanned": results['files_scanned']
         })
 
+    except zipfile.BadZipFile:
+        raise HTTPException(400, "Invalid ZIP file")
+    except Exception as e:
+        raise HTTPException(500, f"Scan failed: {str(e)}")
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
@@ -320,10 +314,10 @@ async def scan_endpoint(
 async def get_report(report_id: str):
     html = report_store.get(report_id)
     if not html:
-        raise HTTPException(404, "Report not found or expired")
+        raise HTTPException(404, "Report not found or expired — please scan again")
     return html
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok", "version": "1.0.0", "checks": 22}
