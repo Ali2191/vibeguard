@@ -30,7 +30,7 @@ Cursor, Claude Code, and Lovable write code fast — but they introduce predicta
 ### CLI
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/vibeguard.git
+git clone https://github.com/Ali2191/vibeguard.git
 cd vibeguard
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
@@ -85,7 +85,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run VibeGuard
-        uses: YOUR_USERNAME/vibeguard@main
+        uses: Ali2191/vibeguard@main
         with:
           path: '.'
           severity: 'critical'
