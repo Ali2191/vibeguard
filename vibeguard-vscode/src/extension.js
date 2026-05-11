@@ -1,32 +1,23 @@
 const vscode = require('vscode');
-const https = require('https');
-const http = require('http');
-const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { execSync } = require('child_process');
 
-// Decoration types for inline highlights
 let criticalDecoration;
 let highDecoration;
 let mediumDecoration;
-
-// Findings tree data
 let findingsProvider;
-let currentFindings = [];
 let diagnosticCollection;
 
 function activate(context) {
   console.log('VibeGuard activated');
 
-  // Init decorations
   criticalDecoration = vscode.window.createTextEditorDecorationType({
     backgroundColor: 'rgba(255, 68, 68, 0.15)',
     borderBottom: '2px solid rgba(255, 68, 68, 0.8)',
     overviewRulerColor: '#ff4444',
     overviewRulerLane: vscode.OverviewRulerLane.Right,
     after: {
-      contentText: ' ⚠ CRITICAL',
+      contentText: '  ⚠ CRITICAL',
       color: '#ff4444',
       fontSize: '11px',
       fontWeight: 'bold',
@@ -39,7 +30,7 @@ function activate(context) {
     overviewRulerColor: '#ffaa00',
     overviewRulerLane: vscode.OverviewRulerLane.Right,
     after: {
-      contentText: ' ⚠ HIGH',
+      contentText: '  ⚠ HIGH',
       color: '#ffaa00',
       fontSize: '11px',
     }
@@ -51,39 +42,33 @@ function activate(context) {
     overviewRulerColor: '#4488ff',
     overviewRulerLane: vscode.OverviewRulerLane.Right,
     after: {
-      contentText: ' ℹ MEDIUM',
+      contentText: '  ℹ MEDIUM',
       color: '#4488ff',
       fontSize: '11px',
     }
   });
 
-  // Diagnostic collection for Problems panel
   diagnosticCollection = vscode.languages.createDiagnosticCollection('vibeguard');
   context.subscriptions.push(diagnosticCollection);
 
-  // Tree view
   findingsProvider = new FindingsTreeProvider();
   vscode.window.registerTreeDataProvider('vibeguardFindings', findingsProvider);
 
-  // Register commands
   context.subscriptions.push(
-    vscode.commands.registerCommand('vibeguard.scan', () => scanWorkspace(context)),
-    vscode.commands.registerCommand('vibeguard.scanFile', () => scanCurrentFile(context)),
+    vscode.commands.registerCommand('vibeguard.scan', () => scanWorkspace()),
+    vscode.commands.registerCommand('vibeguard.scanFile', () => scanCurrentFile()),
     vscode.commands.registerCommand('vibeguard.clearFindings', clearFindings),
-    vscode.commands.registerCommand('vibeguard.openFinding', (finding) => openFinding(finding))
+    vscode.commands.registerCommand('vibeguard.openFinding', (finding) => openFinding(finding)),
+    vscode.commands.registerCommand('vibeguard.configure', () => configurePaths())
   );
 
-  // Auto scan on save
   context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument(doc => {
+    vscode.workspace.onDidSaveTextDocument(() => {
       const config = vscode.workspace.getConfiguration('vibeguard');
-      if (config.get('autoScanOnSave')) {
-        scanWorkspace(context);
-      }
+      if (config.get('autoScanOnSave')) scanWorkspace();
     })
   );
 
-  // Status bar item
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
   statusBar.text = '$(shield) VibeGuard';
   statusBar.command = 'vibeguard.scan';
@@ -92,125 +77,209 @@ function activate(context) {
   context.subscriptions.push(statusBar);
 }
 
-async function scanWorkspace(context) {
+function getConfig() {
+  return vscode.workspace.getConfiguration('vibeguard');
+}
+
+function getPythonPath() {
+  const config = getConfig();
+  const configured = config.get('pythonPath');
+  if (configured && configured !== 'auto') return configured;
+
+  // Auto-detect
+  const candidates = [
+    '/opt/homebrew/bin/python3',
+    '/usr/local/bin/python3',
+    '/usr/bin/python3',
+    '/usr/bin/python',
+  ];
+
+  for (const p of candidates) {
+    try {
+      execSync(`"${p}" --version`, { stdio: 'pipe', timeout: 3000 });
+      return p;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+function getVibeGuardPath() {
+  const config = getConfig();
+  const configured = config.get('vibeguardPath');
+  if (configured) return configured;
+  return null;
+}
+
+async function configurePaths() {
+  // Auto-detect python
+  const pythonPath = getPythonPath();
+
+  const pythonInput = await vscode.window.showInputBox({
+    title: 'VibeGuard: Python Path',
+    prompt: 'Enter the full path to your Python 3 executable',
+    value: pythonPath || '/opt/homebrew/bin/python3',
+    placeHolder: '/opt/homebrew/bin/python3'
+  });
+  if (!pythonInput) return;
+
+  const vibeguardInput = await vscode.window.showInputBox({
+    title: 'VibeGuard: Project Path',
+    prompt: 'Enter the full path to your vibeguard project folder',
+    value: '/Users/tayyab/vibeguard',
+    placeHolder: '/Users/tayyab/vibeguard'
+  });
+  if (!vibeguardInput) return;
+
+  const config = getConfig();
+  await config.update('pythonPath', pythonInput, vscode.ConfigurationTarget.Global);
+  await config.update('vibeguardPath', vibeguardInput, vscode.ConfigurationTarget.Global);
+
+  vscode.window.showInformationMessage(
+    `VibeGuard configured! Python: ${pythonInput} | Project: ${vibeguardInput}`,
+    'Scan Now'
+  ).then(sel => { if (sel === 'Scan Now') scanWorkspace(); });
+}
+
+async function runScan(targetPath) {
+  const pythonPath = getPythonPath();
+  const vibeguardRoot = getVibeGuardPath();
+
+  if (!pythonPath) {
+    const action = await vscode.window.showErrorMessage(
+      'VibeGuard: Python 3 not found. Please configure the path.',
+      'Configure'
+    );
+    if (action === 'Configure') configurePaths();
+    throw new Error('Python not found');
+  }
+
+  if (!vibeguardRoot) {
+    const action = await vscode.window.showErrorMessage(
+      'VibeGuard: vibeguard project path not configured.',
+      'Configure'
+    );
+    if (action === 'Configure') configurePaths();
+    throw new Error('vibeguard path not configured');
+  }
+
+  let output = '';
+  try {
+    output = execSync(
+      `"${pythonPath}" -m cli.main scan "${targetPath}" --json-out`,
+      {
+        cwd: vibeguardRoot,
+        timeout: 120000,
+        maxBuffer: 20 * 1024 * 1024,
+        encoding: 'utf8',
+        env: { ...process.env, PYTHONPATH: vibeguardRoot }
+      }
+    );
+  } catch (e) {
+    // CLI exits with code 0 always — if it throws, check stdout anyway
+    if (e.stdout && e.stdout.includes('"findings"')) {
+      output = e.stdout;
+    } else {
+      throw new Error(`Scanner error: ${e.stderr || e.message}`);
+    }
+  }
+
+  const jsonStart = output.indexOf('{"path"');
+  if (jsonStart === -1) {
+    const jsonStart2 = output.indexOf('{');
+    if (jsonStart2 === -1) return [];
+    const data = JSON.parse(output.substring(jsonStart2));
+    return data.findings || [];
+  }
+  const data = JSON.parse(output.substring(jsonStart));
+  return data.findings || [];
+}
+
+async function scanWorkspace() {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders) {
     vscode.window.showErrorMessage('VibeGuard: No workspace folder open');
     return;
   }
-
   const workspacePath = workspaceFolders[0].uri.fsPath;
+
+  // First time — prompt to configure if not set
+  if (!getVibeGuardPath()) {
+    const action = await vscode.window.showWarningMessage(
+      'VibeGuard needs to be configured before first use.',
+      'Configure Now'
+    );
+    if (action === 'Configure Now') await configurePaths();
+    return;
+  }
 
   await vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
-    title: 'VibeGuard',
+    title: 'VibeGuard: Scanning workspace...',
     cancellable: false
   }, async (progress) => {
-    progress.report({ message: 'Scanning workspace for vulnerabilities...' });
-
     try {
-      // Run the Python scanner directly if available
-      const findings = await runLocalScan(workspacePath, progress);
+      progress.report({ message: 'Running 35+ security checks...' });
+      const findings = await runScan(workspacePath);
       displayFindings(findings, workspacePath);
 
-      const summary = getSummary(findings);
-      if (summary.total === 0) {
+      const s = getSummary(findings);
+      if (s.total === 0) {
         vscode.window.showInformationMessage('VibeGuard: ✓ No security issues found!');
       } else {
         vscode.window.showWarningMessage(
-          `VibeGuard found ${summary.total} issues: ${summary.critical} critical, ${summary.high} high, ${summary.medium} medium`,
+          `VibeGuard: ${s.total} issues found — ${s.critical} critical, ${s.high} high, ${s.medium} medium`,
           'View Findings'
-        ).then(selection => {
-          if (selection === 'View Findings') {
+        ).then(sel => {
+          if (sel === 'View Findings') {
             vscode.commands.executeCommand('workbench.view.extension.vibeguard');
           }
         });
       }
     } catch (err) {
-      vscode.window.showErrorMessage(`VibeGuard scan failed: ${err.message}`);
+      vscode.window.showErrorMessage(`VibeGuard scan failed: ${err.message}`, 'Configure').then(sel => {
+        if (sel === 'Configure') configurePaths();
+      });
     }
   });
 }
 
-async function runLocalScan(workspacePath, progress) {
-  return new Promise((resolve, reject) => {
-    progress.report({ message: 'Running security checks...' });
-
-    // Try to find Python and run the scanner
-    const scriptPath = path.join(__dirname, '..', '..', 'cli', 'main.py');
-    const pythonCommands = ['python3', 'python'];
-
-    let output = null;
-    let lastError = null;
-
-    for (const pythonCmd of pythonCommands) {
-      try {
-        output = execSync(
-          `${pythonCmd} -m cli.main scan "${workspacePath}" --json-out`,
-          {
-            cwd: path.join(__dirname, '..', '..'),
-            timeout: 60000,
-            maxBuffer: 10 * 1024 * 1024,
-            encoding: 'utf8',
-            stdio: ['pipe', 'pipe', 'pipe']
-          }
-        );
-        break;
-      } catch (e) {
-        lastError = e;
-        if (e.stdout) {
-          output = e.stdout;
-          break;
-        }
-        continue;
-      }
-    }
-
-    if (!output) {
-      reject(new Error(`Could not run scanner: ${lastError?.message || 'Python not found'}`));
-      return;
-    }
-
-    try {
-      // Extract JSON from output (skip any Rich terminal output before it)
-      const jsonStart = output.indexOf('{');
-      if (jsonStart === -1) {
-        resolve([]);
-        return;
-      }
-      const jsonStr = output.substring(jsonStart);
-      const data = JSON.parse(jsonStr);
-      resolve(data.findings || []);
-    } catch (e) {
-      reject(new Error(`Could not parse scan results: ${e.message}`));
-    }
-  });
-}
-
-async function scanCurrentFile(context) {
+async function scanCurrentFile() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showErrorMessage('VibeGuard: No file open');
     return;
   }
 
+  if (!getVibeGuardPath()) {
+    const action = await vscode.window.showWarningMessage(
+      'VibeGuard needs to be configured before first use.',
+      'Configure Now'
+    );
+    if (action === 'Configure Now') await configurePaths();
+    return;
+  }
+
   const filePath = editor.document.uri.fsPath;
-  const workspacePath = path.dirname(filePath);
+  const dirPath = path.dirname(filePath);
 
   await vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
     title: 'VibeGuard: Scanning current file...',
     cancellable: false
-  }, async (progress) => {
+  }, async () => {
     try {
-      const findings = await runLocalScan(workspacePath, progress);
-      const fileFindings = findings.filter(f => f.file === filePath || f.file.endsWith(path.basename(filePath)));
-      displayFindings(fileFindings, workspacePath);
-
+      const findings = await runScan(dirPath);
+      const fileFindings = findings.filter(f =>
+        f.file === filePath ||
+        f.file.endsWith(path.basename(filePath))
+      );
+      displayFindings(fileFindings, dirPath);
       if (fileFindings.length === 0) {
         vscode.window.showInformationMessage('VibeGuard: ✓ No issues in this file');
       } else {
-        vscode.window.showWarningMessage(`VibeGuard: ${fileFindings.length} issues found in this file`);
+        vscode.window.showWarningMessage(`VibeGuard: ${fileFindings.length} issues in this file`);
       }
     } catch (err) {
       vscode.window.showErrorMessage(`VibeGuard: ${err.message}`);
@@ -219,49 +288,36 @@ async function scanCurrentFile(context) {
 }
 
 function displayFindings(findings, workspacePath) {
-  currentFindings = findings;
   findingsProvider.refresh(findings, workspacePath);
-
-  const config = vscode.workspace.getConfiguration('vibeguard');
-  if (config.get('showInlineDecorations')) {
-    applyDecorations(findings);
-  }
-
+  applyDecorations(findings);
   applyDiagnostics(findings);
 }
 
 function applyDecorations(findings) {
   const editorMap = new Map();
-
   for (const editor of vscode.window.visibleTextEditors) {
     editorMap.set(editor.document.uri.fsPath, editor);
   }
 
-  // Group findings by file
   const byFile = {};
   for (const f of findings) {
     if (!byFile[f.file]) byFile[f.file] = { critical: [], high: [], medium: [] };
-    const severity = f.severity;
-    if (severity === 'critical') byFile[f.file].critical.push(f);
-    else if (severity === 'high') byFile[f.file].high.push(f);
-    else if (severity === 'medium') byFile[f.file].medium.push(f);
+    const sev = f.severity;
+    if (sev === 'critical') byFile[f.file].critical.push(f);
+    else if (sev === 'high') byFile[f.file].high.push(f);
+    else if (sev === 'medium') byFile[f.file].medium.push(f);
   }
 
   for (const [filePath, editor] of editorMap) {
-    const fileFindings = byFile[filePath] || { critical: [], high: [], medium: [] };
-
+    const ff = byFile[filePath] || { critical: [], high: [], medium: [] };
     const toRange = (f) => {
       const line = Math.max(0, (f.line || 1) - 1);
       const docLine = editor.document.lineAt(Math.min(line, editor.document.lineCount - 1));
-      return new vscode.Range(
-        new vscode.Position(line, 0),
-        new vscode.Position(line, docLine.text.length)
-      );
+      return new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, docLine.text.length));
     };
-
-    editor.setDecorations(criticalDecoration, fileFindings.critical.map(toRange));
-    editor.setDecorations(highDecoration, fileFindings.high.map(toRange));
-    editor.setDecorations(mediumDecoration, fileFindings.medium.map(toRange));
+    editor.setDecorations(criticalDecoration, ff.critical.map(toRange));
+    editor.setDecorations(highDecoration, ff.high.map(toRange));
+    editor.setDecorations(mediumDecoration, ff.medium.map(toRange));
   }
 }
 
@@ -270,26 +326,16 @@ function applyDiagnostics(findings) {
   const diagMap = new Map();
 
   for (const f of findings) {
-    const uri = vscode.Uri.file(f.file);
     if (!diagMap.has(f.file)) diagMap.set(f.file, []);
-
     const line = Math.max(0, (f.line || 1) - 1);
-    const range = new vscode.Range(
-      new vscode.Position(line, 0),
-      new vscode.Position(line, 999)
-    );
-
+    const range = new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 999));
     const severity = f.severity === 'critical' || f.severity === 'high'
       ? vscode.DiagnosticSeverity.Error
       : f.severity === 'medium'
         ? vscode.DiagnosticSeverity.Warning
         : vscode.DiagnosticSeverity.Information;
 
-    const diag = new vscode.Diagnostic(
-      range,
-      `[VibeGuard] ${f.title}`,
-      severity
-    );
+    const diag = new vscode.Diagnostic(range, `[VibeGuard] ${f.title}`, severity);
     diag.source = 'VibeGuard';
     diag.code = f.pattern_id;
     diagMap.get(f.file).push(diag);
@@ -301,29 +347,21 @@ function applyDiagnostics(findings) {
 }
 
 function clearFindings() {
-  currentFindings = [];
   findingsProvider.refresh([], '');
   diagnosticCollection.clear();
-
   for (const editor of vscode.window.visibleTextEditors) {
     editor.setDecorations(criticalDecoration, []);
     editor.setDecorations(highDecoration, []);
     editor.setDecorations(mediumDecoration, []);
   }
-
   vscode.window.showInformationMessage('VibeGuard: Findings cleared');
 }
 
 function openFinding(finding) {
-  if (!finding || !finding.file) return;
-  const uri = vscode.Uri.file(finding.file);
+  if (!finding?.file) return;
   const line = Math.max(0, (finding.line || 1) - 1);
-
-  vscode.window.showTextDocument(uri, {
-    selection: new vscode.Range(
-      new vscode.Position(line, 0),
-      new vscode.Position(line, 999)
-    )
+  vscode.window.showTextDocument(vscode.Uri.file(finding.file), {
+    selection: new vscode.Range(new vscode.Position(line, 0), new vscode.Position(line, 999))
   });
 }
 
@@ -336,7 +374,6 @@ function getSummary(findings) {
   };
 }
 
-// Tree view provider
 class FindingsTreeProvider {
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -351,29 +388,23 @@ class FindingsTreeProvider {
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element) {
-    return element;
-  }
+  getTreeItem(element) { return element; }
 
   getChildren(element) {
     if (!element) {
-      // Root — group by severity
       if (this.findings.length === 0) {
-        return [new vscode.TreeItem('No findings — workspace is clean ✓')];
+        const item = new vscode.TreeItem('No findings — workspace is clean ✓');
+        return [item];
       }
-
       const groups = [];
-      const severities = ['critical', 'high', 'medium', 'low'];
-
-      for (const sev of severities) {
+      const icons = { critical: '🔴', high: '🟡', medium: '🔵', low: '⚪' };
+      for (const sev of ['critical', 'high', 'medium', 'low']) {
         const sevFindings = this.findings.filter(f => f.severity === sev);
         if (sevFindings.length > 0) {
-          const icons = { critical: '🔴', high: '🟡', medium: '🔵', low: '⚪' };
           const item = new vscode.TreeItem(
             `${icons[sev]} ${sev.toUpperCase()} (${sevFindings.length})`,
             vscode.TreeItemCollapsibleState.Expanded
           );
-          item.contextValue = 'severityGroup';
           item._findings = sevFindings;
           groups.push(item);
         }
@@ -381,14 +412,10 @@ class FindingsTreeProvider {
       return groups;
     }
 
-    // Children of a severity group
     if (element._findings) {
       return element._findings.map(f => {
         const relativePath = f.file.replace(this.workspacePath, '').replace(/^\//, '');
-        const item = new vscode.TreeItem(
-          `${f.title}`,
-          vscode.TreeItemCollapsibleState.None
-        );
+        const item = new vscode.TreeItem(f.title, vscode.TreeItemCollapsibleState.None);
         item.description = `${relativePath}:${f.line}`;
         item.tooltip = f.snippet || f.description;
         item.command = {
@@ -396,11 +423,9 @@ class FindingsTreeProvider {
           title: 'Open Finding',
           arguments: [f]
         };
-        item.contextValue = 'finding';
         return item;
       });
     }
-
     return [];
   }
 }

@@ -7,8 +7,17 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Linters", "Other"],
-  "keywords": ["security", "vibe-coding", "AI", "scanner", "vulnerability"],
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "security",
+    "vibe-coding",
+    "AI",
+    "scanner",
+    "vulnerability"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Ali2191/vibeguard"
@@ -33,6 +42,10 @@
       {
         "command": "vibeguard.clearFindings",
         "title": "VibeGuard: Clear Findings"
+      },
+      {
+        "command": "vibeguard.configure",
+        "title": "VibeGuard: Configure Paths"
       }
     ],
     "menus": {
@@ -66,6 +79,16 @@
           "type": "boolean",
           "default": true,
           "description": "Show inline warning decorations in editor"
+        },
+        "vibeguard.pythonPath": {
+          "type": "string",
+          "default": "auto",
+          "description": "Full path to Python 3 executable (e.g. /opt/homebrew/bin/python3)"
+        },
+        "vibeguard.vibeguardPath": {
+          "type": "string",
+          "default": "",
+          "description": "Full path to your vibeguard project folder (e.g. /Users/tayyab/vibeguard)"
         }
       }
     },
