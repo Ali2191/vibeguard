@@ -1,0 +1,98 @@
+{
+  "name": "vibeguard",
+  "displayName": "VibeGuard — Security Scanner",
+  "description": "Scan AI-generated and vibe-coded projects for security vulnerabilities",
+  "version": "0.1.0",
+  "publisher": "Ali2191",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Linters", "Other"],
+  "keywords": ["security", "vibe-coding", "AI", "scanner", "vulnerability"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ali2191/vibeguard"
+  },
+  "activationEvents": [
+    "onCommand:vibeguard.scan",
+    "onCommand:vibeguard.scanFile"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "vibeguard.scan",
+        "title": "VibeGuard: Scan Workspace",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "vibeguard.scanFile",
+        "title": "VibeGuard: Scan Current File",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "vibeguard.clearFindings",
+        "title": "VibeGuard: Clear Findings"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "vibeguard.scan",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "vibeguard.scan",
+          "group": "vibeguard"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "VibeGuard",
+      "properties": {
+        "vibeguard.apiUrl": {
+          "type": "string",
+          "default": "https://vibeguard-three.vercel.app",
+          "description": "VibeGuard API URL"
+        },
+        "vibeguard.autoScanOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically scan when files are saved"
+        },
+        "vibeguard.showInlineDecorations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline warning decorations in editor"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "vibeguard",
+          "title": "VibeGuard",
+          "icon": "$(shield)"
+        }
+      ]
+    },
+    "views": {
+      "vibeguard": [
+        {
+          "id": "vibeguardFindings",
+          "name": "Security Findings",
+          "icon": "$(shield)"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

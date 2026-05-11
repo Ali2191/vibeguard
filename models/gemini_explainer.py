@@ -121,6 +121,66 @@ STATIC_FIXES = {
         'example': 'url = "https://api.example.com/data"  # never http://',
         'why': 'HTTP transmits data in plaintext, allowing attackers to intercept sensitive information on insecure networks.',
     },
+    'jwt_none_algo': {
+        'fix': 'Never allow "none" as a JWT algorithm — explicitly whitelist only HS256 or RS256.',
+        'example': 'jwt.decode(token, secret, algorithms=["HS256"])',
+        'why': 'The none algorithm skips signature verification entirely, allowing anyone to forge tokens.'
+    },
+    'jwt_no_verify': {
+        'fix': 'Remove verify=False and validate the JWT signature on every request.',
+        'example': 'payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])',
+        'why': 'Skipping JWT verification means any token — including forged ones — will be accepted.'
+    },
+    'jwt_weak_secret': {
+        'fix': 'Replace the weak JWT secret with a cryptographically random 256-bit value.',
+        'example': 'import secrets\nJWT_SECRET = secrets.token_hex(32)',
+        'why': 'Weak JWT secrets can be brute-forced offline once an attacker captures a token.'
+    },
+    'crypto_weak_random': {
+        'fix': 'Replace random module with the secrets module for any security-sensitive randomness.',
+        'example': 'import secrets\ntoken = secrets.token_urlsafe(32)\notp = secrets.randbelow(1000000)',
+        'why': 'random.random() is predictable — attackers can predict tokens, OTPs, and session IDs.'
+    },
+    'crypto_math_random': {
+        'fix': 'Replace Math.random() with crypto.getRandomValues() for security purposes.',
+        'example': 'const array = new Uint32Array(1);\ncrypto.getRandomValues(array);\nconst token = array[0].toString(16);',
+        'why': 'Math.random() is not cryptographically secure and its output can be predicted.'
+    },
+    'crypto_weak_hash': {
+        'fix': 'Replace MD5/SHA1 with SHA-256 or better for any security use case.',
+        'example': 'import hashlib\nhash = hashlib.sha256(data.encode()).hexdigest()',
+        'why': 'MD5 and SHA1 are cryptographically broken — collisions can be generated in seconds.'
+    },
+    'crypto_aes_ecb': {
+        'fix': 'Replace AES ECB mode with AES GCM which provides authenticated encryption.',
+        'example': 'from Crypto.Cipher import AES\ncipher = AES.new(key, AES.MODE_GCM)\nciphertext, tag = cipher.encrypt_and_digest(data)',
+        'why': 'ECB mode encrypts identical blocks identically — patterns in plaintext leak into ciphertext.'
+    },
+    'crypto_static_iv': {
+        'fix': 'Generate a fresh random IV/nonce for every encryption operation.',
+        'example': 'import os\niv = os.urandom(16)\ncipher = AES.new(key, AES.MODE_CBC, iv)',
+        'why': 'A static IV with the same key means identical plaintexts produce identical ciphertexts.'
+    },
+    'mass_direct': {
+        'fix': 'Use an explicit allowlist of fields instead of passing the full request body to the model.',
+        'example': 'data = request.json()\nuser = User(name=data["name"], email=data["email"])\n# Never: User(**request.json())',
+        'why': 'Mass assignment lets attackers set protected fields like is_admin or role by including them in the request.'
+    },
+    'mass_js_assign': {
+        'fix': 'Explicitly pick allowed fields from req.body instead of assigning it entirely.',
+        'example': 'const { name, email } = req.body;\nObject.assign(user, { name, email });\n// Never: Object.assign(user, req.body)',
+        'why': 'Assigning the full request body allows attackers to overwrite any model field including privilege flags.'
+    },
+    'redos_user_input': {
+        'fix': 'Never build regex from user input — validate input against a fixed pattern instead.',
+        'example': 'const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/;\nif (!EMAIL_RE.test(userInput)) throw new Error("Invalid");',
+        'why': 'User-controlled regex allows crafted input to cause exponential backtracking and server hang.'
+    },
+    'redos_catastrophic': {
+        'fix': 'Rewrite the regex to eliminate nested quantifiers — use atomic groups or possessive quantifiers.',
+        'example': '# Instead of: (a+)+\n# Use: a+ with input length validation\nif len(input) > 100: raise ValueError("Too long")',
+        'why': 'Catastrophic backtracking can freeze your server for minutes on a single crafted request.'
+    },
 }
 
 def explain_finding(finding: dict, use_ai: bool = True) -> dict:
