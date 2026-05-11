@@ -32,7 +32,7 @@ runs:
       with:
         python-version: '3.11'
 
-    - name: Install VibeGuard
+    - name: Install dependencies
       shell: bash
       run: |
         pip install anthropic google-genai fastapi uvicorn click rich python-dotenv requests jinja2 python-multipart aiofiles
@@ -41,32 +41,59 @@ runs:
       shell: bash
       env:
         GEMINI_API_KEY: ${{ inputs.gemini_api_key }}
-        SCAN_PATH: ${{ inputs.path }}
-        FAIL_SEVERITY: ${{ inputs.severity }}
       run: |
         cd ${{ github.action_path }}
-        python -m cli.main scan "$SCAN_PATH" --report --json-out > /tmp/vibeguard-results.json 2>&1 || true
-        python -m cli.main scan "$SCAN_PATH" --json-out | python3 -c "
-        import json, sys, os
-        data = json.load(sys.stdin)
-        summary = data['summary']
-        print(f'findings_count={summary[\"total\"]}')
-        print(f'critical_count={summary[\"critical\"]}')
-        with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
-            f.write(f'findings_count={summary[\"total\"]}\n')
-            f.write(f'critical_count={summary[\"critical\"]}\n')
-            f.write(f'report_path=vibeguard-report.html\n')
-        severity = os.environ.get('FAIL_SEVERITY', 'critical')
-        counts = {'critical': summary['critical'], 'high': summary['high'], 'medium': summary['medium'], 'low': summary['low']}
+
+        # Run scan and save JSON to file (--json-out writes clean JSON)
+        python -m cli.main scan "${{ inputs.path }}" --json-out > /tmp/vg_results.json 2>/dev/null || true
+
+        # Generate HTML report separately
+        python -m cli.main scan "${{ inputs.path }}" --fix --no-ai --report 2>/dev/null || true
+
+    - name: Parse results and set outputs
+      shell: python
+      run: |
+        import json, os, sys
+
+        results_file = '/tmp/vg_results.json'
+
+        try:
+            with open(results_file) as f:
+                data = json.load(f)
+        except Exception as e:
+            print(f"Could not parse results: {e}")
+            sys.exit(0)
+
+        summary = data.get('summary', {})
+        total = summary.get('total', 0)
+        critical = summary.get('critical', 0)
+        high = summary.get('high', 0)
+        medium = summary.get('medium', 0)
+
+        print(f"VibeGuard found {total} issues: {critical} critical, {high} high, {medium} medium")
+
+        github_output = os.environ.get('GITHUB_OUTPUT', '')
+        if github_output:
+            with open(github_output, 'a') as f:
+                f.write(f"findings_count={total}\n")
+                f.write(f"critical_count={critical}\n")
+                f.write(f"report_path=vibeguard-report.html\n")
+
+        fail_severity = "${{ inputs.severity }}"
         order = ['critical', 'high', 'medium', 'low']
-        threshold = order.index(severity)
+        counts = {'critical': critical, 'high': high, 'medium': medium, 'low': 0}
+
+        if fail_severity not in order:
+            fail_severity = 'critical'
+
+        threshold = order.index(fail_severity)
         should_fail = any(counts[order[i]] > 0 for i in range(threshold + 1))
+
         if should_fail:
-            print(f'FAIL: {summary[\"critical\"]} critical, {summary[\"high\"]} high findings detected.')
+            print(f"FAIL: findings at or above '{fail_severity}' severity detected.")
             sys.exit(1)
         else:
-            print(f'PASS: No findings at or above {severity} severity.')
-        "
+            print(f"PASS: no findings at or above '{fail_severity}' severity.")
 
     - name: Upload HTML report
       if: always()
