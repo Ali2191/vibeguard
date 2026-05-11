@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vibe-guard"
+version = "1.0.0"
+description = "AI-powered security scanner for detecting vulnerabilities in generated code"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Tayyab Ali", email = "tayyab@example.com"}
+]
+keywords = ["security", "scanner", "ai", "vulnerability", "static-analysis"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "fastapi==0.115.0",
+    "uvicorn==0.30.0",
+    "jinja2==3.1.4",
+    "python-multipart==0.0.9",
+    "aiofiles==23.2.1",
+    "google-genai==1.0.0",
+    "python-dotenv==1.0.1",
+    "requests==2.32.3",
+]
+
+[project.scripts]
+vibeguard = "cli.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/ali2191/vibeguard"
+Repository = "https://github.com/ali2191/vibeguard"
+Issues = "https://github.com/ali2191/vibeguard/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cli", "core", "core.patterns", "models", "api"]
+
+[tool.setuptools.package-data]
+vibeguard = ["*.txt", "*.md", "*.yml", "*.yaml"]
