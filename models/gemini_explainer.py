@@ -79,7 +79,47 @@ STATIC_FIXES = {
     'config_debug': {
         'fix': 'Set DEBUG to False in production and load it from an environment variable.',
         'example': 'import os\nDEBUG = os.getenv("DEBUG", "false").lower() == "true"',
-        'why': 'Debug mode exposes full stack traces, internal paths, and environment variables to anyone who triggers an error.'
+        'why': 'Debug mode exposes full stack traces, internal paths, and environment variables to anyone who triggers an error.',
+    },
+    'packages_hallucinated': {
+        'fix': 'Verify the package exists on the official registry (PyPI or npm) and install the correct package name.',
+        'example': '# Verify on pypi.org or npmjs.org before installing\npip install requests  # not requests2 or python-requests',
+        'why': 'AI tools often hallucinate package names that do not exist, leading to broken builds or typosquat attacks.',
+    },
+    'packages_suspicious': {
+        'fix': 'Audit the package on the official registry, check download counts, and verify the publisher before using it.',
+        'example': '# Check package reputation\nnpm audit --audit-level moderate\n# Or use tools like socket.dev',
+        'why': 'Suspicious naming patterns (e.g., unofficial, gpt4, trusted) are common indicators of typosquatting or malicious packages.',
+    },
+    'exposure_console': {
+        'fix': 'Remove console.log/print statements that output sensitive data; use structured logging with redaction for production.',
+        'example': 'import logging\nlogger = logging.getLogger(__name__)\nlogger.info("User login", extra={"user_id": user.id})  # never log passwords',
+        'why': 'Logging secrets to console or stdout exposes them to anyone with access to logs, CI/CD artifacts, or container output.',
+    },
+    'exposure_ssl': {
+        'fix': 'Always enable SSL certificate verification in production; never set verify=False.',
+        'example': 'import requests\nresponse = requests.get(url, verify=True)  # default is True; keep it',
+        'why': 'Disabling SSL verification opens the door to man-in-the-middle attacks where attackers can intercept and modify traffic.',
+    },
+    'exposure_pickle': {
+        'fix': 'Replace pickle with JSON or MessagePack for data serialization; if you must use pickle, sign and verify the payload.',
+        'example': 'import json\n# Instead of pickle.loads(data)\ndata = json.loads(raw)',
+        'why': 'Pickle can execute arbitrary code during deserialization, making it trivial for attackers to achieve remote code execution.',
+    },
+    'exposure_yaml': {
+        'fix': 'Use yaml.safe_load() instead of yaml.load() to prevent arbitrary object deserialization.',
+        'example': 'import yaml\n# Safe: only loads simple Python objects\ndata = yaml.safe_load(stream)',
+        'why': 'yaml.load() without a safe loader can execute arbitrary Python code embedded in the YAML file.',
+    },
+    'exposure_traversal': {
+        'fix': 'Sanitize and validate all user-provided paths; use allowlists and os.path.realpath to resolve symlinks.',
+        'example': 'from pathlib import Path\nbase = Path("/safe/base").resolve()\n target = (base / filename).resolve()\nif not str(target).startswith(str(base)):\n    raise ValueError("Path traversal detected")',
+        'why': 'Using user input in file paths without validation allows attackers to read or write arbitrary files on the server.',
+    },
+    'exposure_http': {
+        'fix': 'Replace all HTTP URLs with HTTPS to prevent man-in-the-middle and eavesdropping attacks.',
+        'example': 'url = "https://api.example.com/data"  # never http://',
+        'why': 'HTTP transmits data in plaintext, allowing attackers to intercept sensitive information on insecure networks.',
     },
 }
 

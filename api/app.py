@@ -4,11 +4,10 @@ import shutil
 import tempfile
 from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from core.scanner import scan_path
-from output.report import generate_html_report, generate_json_report
+from output.report import generate_html_report
 from models.gemini_explainer import explain_all
 
 app = FastAPI(title="VibeGuard API", version="1.0.0")
@@ -20,8 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-REPORTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'reports')
-os.makedirs(REPORTS_DIR, exist_ok=True)
+report_store = {}
 
 LANDING_HTML = """<!DOCTYPE html>
 <html lang="en">
@@ -152,7 +150,7 @@ LANDING_HTML = """<!DOCTYPE html>
 </div>
 
 <div class="checks">
-  <h3>12 checks run on every scan</h3>
+  <h3>34 checks run on every scan</h3>
   <div class="check-grid">
     <div class="check-item">Hardcoded API keys</div>
     <div class="check-item">Client-side auth</div>
@@ -166,6 +164,28 @@ LANDING_HTML = """<!DOCTYPE html>
     <div class="check-item">Unvalidated uploads</div>
     <div class="check-item">Debug mode in prod</div>
     <div class="check-item">High-entropy strings</div>
+    <div class="check-item">Fake/hallucinated packages</div>
+    <div class="check-item">Suspicious package names</div>
+    <div class="check-item">Console log leaks</div>
+    <div class="check-item">SSL verification disabled</div>
+    <div class="check-item">Pickle deserialization</div>
+    <div class="check-item">YAML unsafe load</div>
+    <div class="check-item">Path traversal</div>
+    <div class="check-item">HTTP URLs in code</div>
+    <div class="check-item">Stack trace exposure</div>
+    <div class="check-item">.env file commits</div>
+    <div class="check-item">Inline secrets in URLs</div>
+    <div class="check-item">Hardcoded IP addresses</div>
+    <div class="check-item">Sensitive comments</div>
+    <div class="check-item">Subprocess shell=True</div>
+    <div class="check-item">Dynamic import risks</div>
+    <div class="check-item">XML external entities</div>
+    <div class="check-item">CSRF protection missing</div>
+    <div class="check-item">JWT none algorithm</div>
+    <div class="check-item">Temp file vulnerabilities</div>
+    <div class="check-item">Regex DoS patterns</div>
+    <div class="check-item">Weak random generation</div>
+    <div class="check-item">Verbose error messages</div>
   </div>
 </div>
 
@@ -283,11 +303,8 @@ async def scan_endpoint(
                 use_ai=ai_mode
             )
 
-        report_path = os.path.join(REPORTS_DIR, f"{report_id}.html")
-        generate_html_report(results, output_path=report_path)
-
-        json_path = os.path.join(REPORTS_DIR, f"{report_id}.json")
-        generate_json_report(results, output_path=json_path)
+        html = generate_html_report(results)
+        report_store[report_id] = html
 
         return JSONResponse({
             "report_id": report_id,
@@ -301,19 +318,10 @@ async def scan_endpoint(
 
 @app.get("/report/{report_id}", response_class=HTMLResponse)
 async def get_report(report_id: str):
-    report_path = os.path.join(REPORTS_DIR, f"{report_id}.html")
-    if not os.path.exists(report_path):
-        raise HTTPException(404, "Report not found")
-    with open(report_path, 'r') as f:
-        return f.read()
-
-
-@app.get("/report/{report_id}/json")
-async def get_report_json(report_id: str):
-    json_path = os.path.join(REPORTS_DIR, f"{report_id}.json")
-    if not os.path.exists(json_path):
-        raise HTTPException(404, "Report not found")
-    return FileResponse(json_path, media_type="application/json")
+    html = report_store.get(report_id)
+    if not html:
+        raise HTTPException(404, "Report not found or expired")
+    return html
 
 
 @app.get("/health")

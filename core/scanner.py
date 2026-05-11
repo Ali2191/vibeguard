@@ -1,7 +1,7 @@
 from core.parser import parse_directory
-from core.patterns import secrets, injection, auth, storage, config
+from core.patterns import secrets, injection, auth, storage, config, packages, exposure
 
-SCANNERS = [secrets, injection, auth, storage, config]
+SCANNERS = [secrets, injection, auth, storage, config, packages, exposure]
 SEVERITY_ORDER = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
 
 def deduplicate(findings: list[dict]) -> list[dict]:

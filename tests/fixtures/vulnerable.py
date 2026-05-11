@@ -27,3 +27,15 @@ def run_command(user_input):
     eval(user_input)
     exec(user_input)
     os.system(user_input)
+
+# Exposure patterns
+import requests
+import pickle
+import yaml
+
+requests.get(url, verify=False)
+print(f"password: {input_password}")
+data = pickle.loads(user_input)
+data = yaml.load(stream)
+open("/tmp/" + user_input, "r")
+fetch_url = "http://api.example.com/data"
