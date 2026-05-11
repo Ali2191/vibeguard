@@ -1,0 +1,76 @@
+name: VibeGuard Security Scan
+description: Scan AI-generated code for security vulnerabilities
+author: VibeGuard
+
+inputs:
+  path:
+    description: Path to scan (relative to repo root)
+    required: false
+    default: '.'
+  severity:
+    description: Minimum severity to fail on (critical, high, medium, low)
+    required: false
+    default: 'critical'
+  gemini_api_key:
+    description: Gemini API key for AI fix suggestions
+    required: false
+    default: ''
+
+outputs:
+  findings_count:
+    description: Total number of findings
+  critical_count:
+    description: Number of critical findings
+  report_path:
+    description: Path to the generated HTML report
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install VibeGuard
+      shell: bash
+      run: |
+        pip install anthropic google-genai fastapi uvicorn click rich python-dotenv requests jinja2 python-multipart aiofiles
+
+    - name: Run VibeGuard scan
+      shell: bash
+      env:
+        GEMINI_API_KEY: ${{ inputs.gemini_api_key }}
+        SCAN_PATH: ${{ inputs.path }}
+        FAIL_SEVERITY: ${{ inputs.severity }}
+      run: |
+        cd ${{ github.action_path }}
+        python -m cli.main scan "$SCAN_PATH" --report --json-out > /tmp/vibeguard-results.json 2>&1 || true
+        python -m cli.main scan "$SCAN_PATH" --json-out | python3 -c "
+        import json, sys, os
+        data = json.load(sys.stdin)
+        summary = data['summary']
+        print(f'findings_count={summary[\"total\"]}')
+        print(f'critical_count={summary[\"critical\"]}')
+        with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
+            f.write(f'findings_count={summary[\"total\"]}\n')
+            f.write(f'critical_count={summary[\"critical\"]}\n')
+            f.write(f'report_path=vibeguard-report.html\n')
+        severity = os.environ.get('FAIL_SEVERITY', 'critical')
+        counts = {'critical': summary['critical'], 'high': summary['high'], 'medium': summary['medium'], 'low': summary['low']}
+        order = ['critical', 'high', 'medium', 'low']
+        threshold = order.index(severity)
+        should_fail = any(counts[order[i]] > 0 for i in range(threshold + 1))
+        if should_fail:
+            print(f'FAIL: {summary[\"critical\"]} critical, {summary[\"high\"]} high findings detected.')
+            sys.exit(1)
+        else:
+            print(f'PASS: No findings at or above {severity} severity.')
+        "
+
+    - name: Upload HTML report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: vibeguard-security-report
+        path: vibeguard-report.html

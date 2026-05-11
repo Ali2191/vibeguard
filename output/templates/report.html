@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VibeGuard Report — {{ results.path }}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f0f0f;
+    --bg2: #161616;
+    --bg3: #1e1e1e;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --muted: #888;
+    --red: #ff4444;
+    --red-bg: #1a0a0a;
+    --red-border: #3d1010;
+    --yellow: #ffaa00;
+    --yellow-bg: #1a1200;
+    --yellow-border: #3d2d00;
+    --blue: #4488ff;
+    --blue-bg: #0a1020;
+    --blue-border: #1a2d50;
+    --green: #44cc88;
+    --green-bg: #0a1a10;
+    --radius: 8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+  a { color: var(--blue); text-decoration: none; }
+  header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo span { color: var(--red); }
+  .meta { color: var(--muted); font-size: 12px; text-align: right; }
+  .meta strong { color: var(--text); }
+  .container { max-width: 1100px; margin: 0 auto; padding: 32px 40px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  .stat { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; text-align: center; }
+  .stat .num { font-size: 36px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat.critical .num { color: var(--red); }
+  .stat.high .num { color: var(--yellow); }
+  .stat.medium .num { color: var(--blue); }
+  .stat.total .num { color: var(--text); }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .filters { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  .filter-btn { background: var(--bg2); border: 1px solid var(--border); color: var(--muted); border-radius: 20px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: all 0.15s; font-family: var(--font); }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--text); color: var(--text); background: var(--bg3); }
+  .filter-btn.active.critical { border-color: var(--red); color: var(--red); }
+  .filter-btn.active.high { border-color: var(--yellow); color: var(--yellow); }
+  .filter-btn.active.medium { border-color: var(--blue); color: var(--blue); }
+  .findings-list { display: flex; flex-direction: column; gap: 10px; }
+  .finding { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.15s; }
+  .finding:hover { border-color: #444; }
+  .finding.critical { border-left: 3px solid var(--red); }
+  .finding.high { border-left: 3px solid var(--yellow); }
+  .finding.medium { border-left: 3px solid var(--blue); }
+  .finding.low { border-left: 3px solid #555; }
+  .finding-header { padding: 14px 18px; cursor: pointer; display: flex; align-items: center; gap: 12px; user-select: none; }
+  .finding-header:hover { background: var(--bg3); }
+  .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; }
+  .badge.critical { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge.high { background: var(--yellow-bg); color: var(--yellow); border: 1px solid var(--yellow-border); }
+  .badge.medium { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+  .badge.low { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+  .finding-title { font-weight: 500; flex: 1; }
+  .finding-location { font-size: 12px; color: var(--muted); font-family: var(--mono); flex-shrink: 0; }
+  .chevron { color: var(--muted); font-size: 10px; flex-shrink: 0; transition: transform 0.2s; }
+  .finding.open .chevron { transform: rotate(90deg); }
+  .finding-body { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border); }
+  .finding.open .finding-body { display: block; }
+  .snippet-block { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: #ccc; margin: 14px 0; overflow-x: auto; white-space: pre; }
+  .fix-section { margin-top: 14px; }
+  .fix-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .fix-label.why { color: var(--yellow); }
+  .fix-label.fix { color: var(--green); }
+  .fix-label.example { color: var(--blue); }
+  .fix-text { font-size: 13px; color: var(--text); line-height: 1.6; }
+  .example-block { background: var(--green-bg); border: 1px solid #1a3d2a; border-radius: 6px; padding: 12px 14px; font-family: var(--mono); font-size: 12px; color: #88ddaa; margin-top: 6px; overflow-x: auto; white-space: pre; }
+  .no-findings { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .no-findings .icon { font-size: 48px; margin-bottom: 12px; }
+  .no-findings h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+  footer { border-top: 1px solid var(--border); padding: 24px 40px; text-align: center; color: var(--muted); font-size: 12px; margin-top: 60px; }
+  .progress-bar { height: 6px; background: var(--bg3); border-radius: 3px; margin-bottom: 32px; overflow: hidden; display: flex; }
+  .progress-seg { height: 100%; transition: width 0.3s; }
+  .progress-seg.critical { background: var(--red); }
+  .progress-seg.high { background: var(--yellow); }
+  .progress-seg.medium { background: var(--blue); }
+  @media (max-width: 600px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .container { padding: 20px; }
+    header { padding: 16px 20px; flex-direction: column; gap: 8px; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Vibe<span>Guard</span></div>
+  <div class="meta">
+    <strong>{{ results.path }}</strong><br>
+    {{ results.files_scanned }} files scanned &nbsp;&middot;&nbsp; {{ generated_at }}
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="summary-grid">
+    <div class="stat total">
+      <div class="num">{{ results.summary.total }}</div>
+      <div class="label">Total findings</div>
+    </div>
+    <div class="stat critical">
+      <div class="num">{{ results.summary.critical }}</div>
+      <div class="label">Critical</div>
+    </div>
+    <div class="stat high">
+      <div class="num">{{ results.summary.high }}</div>
+      <div class="label">High</div>
+    </div>
+    <div class="stat medium">
+      <div class="num">{{ results.summary.medium }}</div>
+      <div class="label">Medium</div>
+    </div>
+  </div>
+
+  {% if results.summary.total > 0 %}
+  <div class="progress-bar">
+    {% set total = results.summary.total %}
+    <div class="progress-seg critical" style="width: {{ (results.summary.critical / total * 100)|round }}%"></div>
+    <div class="progress-seg high" style="width: {{ (results.summary.high / total * 100)|round }}%"></div>
+    <div class="progress-seg medium" style="width: {{ (results.summary.medium / total * 100)|round }}%"></div>
+  </div>
+  {% endif %}
+
+  <div class="section-title">Findings</div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterFindings('all', this)">All ({{ results.summary.total }})</button>
+    <button class="filter-btn" onclick="filterFindings('critical', this)">Critical ({{ results.summary.critical }})</button>
+    <button class="filter-btn" onclick="filterFindings('high', this)">High ({{ results.summary.high }})</button>
+    <button class="filter-btn" onclick="filterFindings('medium', this)">Medium ({{ results.summary.medium }})</button>
+  </div>
+
+  <div class="findings-list" id="findings-list">
+    {% if results.findings %}
+      {% for f in results.findings %}
+      <div class="finding {{ f.severity }}" data-severity="{{ f.severity }}">
+        <div class="finding-header" onclick="toggleFinding(this.parentElement)">
+          <span class="badge {{ f.severity }}">{{ f.severity }}</span>
+          <span class="finding-title">{{ f.title }}</span>
+          <span class="finding-location">{{ f.file | replace(results.path, '') | replace('/', '', 1) }}:{{ f.line }}</span>
+          <span class="chevron">&#9654;</span>
+        </div>
+        <div class="finding-body">
+          <div class="snippet-block">{{ f.snippet }}</div>
+          {% if f.why %}
+          <div class="fix-section">
+            <div class="fix-label why">Why it matters</div>
+            <div class="fix-text">{{ f.why }}</div>
+          </div>
+          {% endif %}
+          {% if f.fix %}
+          <div class="fix-section">
+            <div class="fix-label fix">Fix</div>
+            <div class="fix-text">{{ f.fix }}</div>
+          </div>
+          {% endif %}
+          {% if f.example %}
+          <div class="fix-section">
+            <div class="fix-label example">Example</div>
+            <div class="example-block">{{ f.example }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="no-findings">
+        <div class="icon">&#10003;</div>
+        <h3>No issues found</h3>
+        <p>This codebase passed all VibeGuard security checks.</p>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<footer>
+  Generated by VibeGuard &mdash; AI-generated code security scanner
+</footer>
+
+<script>
+function toggleFinding(el) {
+  el.classList.toggle('open');
+}
+
+function filterFindings(severity, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.remove('active', 'critical', 'high', 'medium');
+  });
+  btn.classList.add('active');
+  if (severity !== 'all') btn.classList.add(severity);
+
+  document.querySelectorAll('.finding').forEach(f => {
+    if (severity === 'all' || f.dataset.severity === severity) {
+      f.style.display = '';
+    } else {
+      f.style.display = 'none';
+    }
+  });
+}
+
+document.querySelectorAll('.finding.critical .finding-header')[0]?.click();
+</script>
+
+</body>
+</html>

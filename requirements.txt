@@ -1,0 +1,12 @@
+anthropic
+google-generativeai
+fastapi
+uvicorn
+click
+rich
+python-dotenv
+requests
+jinja2
+python-multipart
+aiofiles
+esprima

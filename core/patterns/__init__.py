@@ -1,0 +1,1 @@
+from core.patterns import secrets, injection, auth, storage, config

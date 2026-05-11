@@ -1,0 +1,34 @@
+name: VibeGuard Security Scan
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run VibeGuard
+        uses: ./
+        with:
+          path: '.'
+          severity: 'critical'
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## VibeGuard Security Scan\nScan complete. Download the HTML report from the Actions artifacts tab.'
+            });
