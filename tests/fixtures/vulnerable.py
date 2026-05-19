@@ -25,7 +25,7 @@ def check_password(input_password):
 
 def run_command(user_input):
     eval(user_input)
-    exec(user_input)
+    Remove exec(). Restructure code to avoid dynamic execution entirely.
     os.system(user_input)
 
 # Exposure patterns
