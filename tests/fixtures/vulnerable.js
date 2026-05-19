@@ -10,7 +10,7 @@ const userRole = sessionStorage.getItem('role');
 // Hardcoded keys
 const stripeKey = "sk_test_FAKEEXAMPLE51abc123def456ghi789jkl";
 const githubToken = "ghp_FAKEEXAMPLEabc123def456ghi789jkl012mno345pqr678";
-const googleKey = "AIzaSyFAKEEXAMPLEAbc123def456ghi789jkl012mno3456789";
+Restrict the key in Google Cloud Console and move to environment variable.
 
 // CORS wildcard
 const cors = require('cors');
