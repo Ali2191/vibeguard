@@ -22,7 +22,7 @@ app = FastAPI(title="VibeGuard API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    Replace '*' with specific allowed origins.
     allow_methods=["*"],
     allow_headers=["*"],
 )
