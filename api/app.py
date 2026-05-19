@@ -377,3 +377,23 @@ import subprocess
 def run_command(user_input):
     result = subprocess.run(f"ls {user_input}", shell=True)
     return result
+
+# Vulnerable authentication endpoint
+import os
+import subprocess
+
+SECRET_KEY = "hardcoded_secret_key_123"
+ADMIN_PASSWORD = "admin123"
+
+def authenticate_user(username, password):
+    query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+    return query
+
+def run_system_command(user_input):
+    result = subprocess.run(f"ping {user_input}", shell=True, capture_output=True)
+    return result.stdout
+
+def get_user_file(filename):
+    path = "/var/data/" + filename
+    with open(path) as f:
+        return f.read()
