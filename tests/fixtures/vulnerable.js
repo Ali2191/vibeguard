@@ -8,7 +8,7 @@ const token = localStorage.getItem('auth_token');
 const userRole = sessionStorage.getItem('role');
 
 // Hardcoded keys
-const stripeKey = "sk_test_FAKEEXAMPLE51abc123def456ghi789jkl";
+Move Stripe test keys to environment variables. Do not commit even test keys.
 const githubToken = "ghp_FAKEEXAMPLEabc123def456ghi789jkl012mno345pqr678";
 Restrict the key in Google Cloud Console and move to environment variable.
 
