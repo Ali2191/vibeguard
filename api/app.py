@@ -371,3 +371,9 @@ import subprocess
 def run_command(user_input):
     result = subprocess.run(f"ls {user_input}", shell=True)
     return result
+
+# Test vulnerable code
+import subprocess
+def run_command(user_input):
+    result = subprocess.run(f"ls {user_input}", shell=True)
+    return result
