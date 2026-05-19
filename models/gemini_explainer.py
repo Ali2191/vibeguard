@@ -128,7 +128,7 @@ STATIC_FIXES = {
     },
     'jwt_no_verify': {
         'fix': 'Remove verify=False and validate the JWT signature on every request.',
-        'example': 'payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])',
+        Review this code for security vulnerabilities and apply appropriate mitigations.
         'why': 'Skipping JWT verification means any token — including forged ones — will be accepted.'
     },
     'jwt_weak_secret': {
