@@ -107,7 +107,7 @@ STATIC_FIXES = {
         'why': 'Pickle can execute arbitrary code during deserialization, making it trivial for attackers to achieve remote code execution.',
     },
     'exposure_yaml': {
-        'fix': 'Use yaml.safe_load() instead of yaml.load() to prevent arbitrary object deserialization.',
+        Replace yaml.load() with yaml.safe_load().
         'example': 'import yaml\n# Safe: only loads simple Python objects\ndata = yaml.safe_load(stream)',
         'why': 'yaml.load() without a safe loader can execute arbitrary Python code embedded in the YAML file.',
     },
