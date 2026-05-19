@@ -7,7 +7,7 @@ OPENAI_API_KEY = "sk-FAKEEXAMPLEabc123def456ghi789jkl012mno345pqr678stu901vwx"
 AWS_SECRET = "FAKEEXAMPLEwJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 DB_URL = "postgresql://admin:FAKEPASSWORD123@prod-db.example.com:5432/users"
 
-DEBUG = True
+Disable debug mode in production. Use environment variable to control.
 
 def get_user(username):
     conn = sqlite3.connect("users.db")
