@@ -109,7 +109,7 @@ STATIC_FIXES = {
     'exposure_yaml': {
         Replace yaml.load() with yaml.safe_load().
         'example': 'import yaml\n# Safe: only loads simple Python objects\ndata = yaml.safe_load(stream)',
-        'why': 'yaml.load() without a safe loader can execute arbitrary Python code embedded in the YAML file.',
+        Replace yaml.load() with yaml.safe_load().
     },
     'exposure_traversal': {
         'fix': 'Sanitize and validate all user-provided paths; use allowlists and os.path.realpath to resolve symlinks.',
