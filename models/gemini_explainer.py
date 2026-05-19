@@ -123,7 +123,7 @@ STATIC_FIXES = {
     },
     'jwt_none_algo': {
         'fix': 'Never allow "none" as a JWT algorithm — explicitly whitelist only HS256 or RS256.',
-        'example': 'jwt.decode(token, secret, algorithms=["HS256"])',
+        Review this code for security vulnerabilities and apply appropriate mitigations.
         'why': 'The none algorithm skips signature verification entirely, allowing anyone to forge tokens.'
     },
     'jwt_no_verify': {
