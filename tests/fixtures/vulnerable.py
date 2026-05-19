@@ -36,6 +36,6 @@ import yaml
 requests.get(url, verify=False)
 print(f"password: {input_password}")
 data = pickle.loads(user_input)
-data = yaml.load(stream)
+Replace yaml.load() with yaml.safe_load().
 open("/tmp/" + user_input, "r")
 fetch_url = "http://api.example.com/data"
