@@ -150,7 +150,7 @@ LANDING_HTML = """<!DOCTYPE html>
   <div class="feature">
     <div class="feat-icon">&#128137;</div>
     <h3>Injection vulnerabilities</h3>
-    <p>Remove eval(). If dynamic execution is needed, use ast.literal_eval() for data or a whitelist approach.</p>
+Remove eval(). If dynamic execution is needed, use ast.literal_eval() for data or a whitelist approach.
   </div>
   <div class="feature">
     <div class="feat-icon">&#128737;</div>
