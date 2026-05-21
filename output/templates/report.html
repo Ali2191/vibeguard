@@ -126,15 +126,7 @@
     </div>
   </div>
 
-  {% if results.summary.total > 0 %}
-  <div class="progress-bar">
-    {% set total = results.summary.total %}
-    <div class="progress-seg critical" style="width: {{ (results.summary.critical / total * 100)|round }}%"></div>
-    <div class="progress-seg high" style="width: {{ (results.summary.high / total * 100)|round }}%"></div>
-    <div class="progress-seg medium" style="width: {{ (results.summary.medium / total * 100)|round }}%"></div>
-  </div>
-  {% endif %}
-
+  
   <div class="section-title">Findings</div>
 
   <div class="filters">
@@ -144,6 +136,7 @@
     <button class="filter-btn" onclick="filterFindings('medium', this)">Medium ({{ results.summary.medium }})</button>
   </div>
 
+  
   <div class="findings-list" id="findings-list">
     {% if results.findings %}
       {% for f in results.findings %}

@@ -186,7 +186,7 @@ STATIC_FIXES = {
 def explain_finding(finding: dict, use_ai: bool = True) -> dict:
     pattern_id = finding.get('pattern_id', '')
 
-    if not use_ai:
+    if not use_ai or not client.api_key:
         static = STATIC_FIXES.get(pattern_id, {
             'fix': 'Review this finding manually and apply the principle of least privilege.',
             'example': '',
@@ -207,7 +207,9 @@ def explain_finding(finding: dict, use_ai: bool = True) -> dict:
 
 Return JSON fix object now."""
 
-    max_retries = 3
+    max_retries = 2  # Reduced retries to avoid long waits
+    timeout_seconds = 10  # Add timeout for API calls
+    
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
@@ -215,7 +217,7 @@ Return JSON fix object now."""
                 contents=SYSTEM_PROMPT + "\n\n" + prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.1,
-                    max_output_tokens=512,
+                    max_output_tokens=256,  # Reduced tokens for faster response
                 )
             )
             raw = response.text.strip()
@@ -229,16 +231,17 @@ Return JSON fix object now."""
         except Exception as e:
             err = str(e)
             if '429' in err and attempt < max_retries - 1:
-                wait = 35
+                wait = 10  # Reduced wait time
                 try:
                     import re
                     match = re.search(r'retry in (\d+)', err)
                     if match:
-                        wait = int(match.group(1)) + 3
+                        wait = int(match.group(1)) + 2
                 except Exception:
                     pass
                 time.sleep(wait)
                 continue
+            # Always fall back to static fixes on any error to avoid hanging
             static = STATIC_FIXES.get(pattern_id, {
                 'fix': 'Review this finding manually.',
                 'example': '',
