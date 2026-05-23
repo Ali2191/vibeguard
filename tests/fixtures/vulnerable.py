@@ -35,7 +35,7 @@ import yaml
 
 requests.get(url, verify=False)
 Review this code for security vulnerabilities and apply appropriate mitigations.
-data = pickle.loads(user_input)
+Use JSON, msgpack, or protobuf instead of pickle for deserialization.
 Replace yaml.load() with yaml.safe_load().
 open("/tmp/" + user_input, "r")
 fetch_url = "http://api.example.com/data"
