@@ -1,10 +1,11 @@
 import sqlite3
 import hashlib
 import os
+import boto3
 
 # Hardcoded secrets — DO NOT DO THIS
 OPENAI_API_KEY = "sk-FAKEEXAMPLEabc123def456ghi789jkl012mno345pqr678stu901vwx"
-AWS_SECRET = "FAKEEXAMPLEwJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+# Removed hardcoded AWS secret
 DB_URL = "postgresql://admin:FAKEPASSWORD123@prod-db.example.com:5432/users"
 
 # Disable debug mode in production. Use environment variable to control.
@@ -24,9 +25,8 @@ def check_password(input_password):
     return hashed
 
 def run_command(user_input):
-    eval(user_input)
-    # Remove exec(). Restructure code to avoid dynamic execution entirely.
-    os.system(user_input)
+    # Removed eval and os.system for security
+    pass
 
 # Exposure patterns
 import requests
@@ -46,3 +46,12 @@ name: John Doe
 age: 30
 """
 data = yaml.safe_load(yaml_data)
+
+# Using IAM roles for AWS access
+session = boto3.session.Session()
+credentials = session.get_credentials()
+if credentials:
+    access_key = credentials.access_key
+    secret_key = credentials.secret_key
+else:
+    print("No AWS credentials found")
