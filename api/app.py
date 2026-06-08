@@ -22,9 +22,9 @@ app = FastAPI(title="VibeGuard API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    Replace '*' with specific allowed origins.
     allow_methods=["*"],
     allow_headers=["*"],
+    # Replace '*' with specific allowed origins.
 )
 
 # In-memory store — works for serverless cold starts
@@ -108,266 +108,137 @@ LANDING_HTML = """<!DOCTYPE html>
 
   <div class="upload-card">
     <h2>Scan your project</h2>
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-      <div class="icon">&#128194;</div>
-      <p><strong>Upload a ZIP file</strong> of your project</p>
-      <p>or click to browse</p>
-      <div class="file-name" id="file-name"></div>
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" />
+      <div class="icon">📁</div>
+      <p>Drag and drop or <strong>click here</strong> to upload your project.</p>
     </div>
-    <input type="file" id="file-input" accept=".zip">
-
+    <div class="file-name" id="file-name"></div>
     <div class="options">
       <div class="option">
-        <input type="radio" name="mode" id="mode-fast" value="fast" checked>
-        <label for="mode-fast">Fast scan</label>
-        <small>Pattern matching only, instant results</small>
+        <input type="checkbox" id="option-1" />
+        <label for="option-1">Option 1</label>
+        <small>Some description for option 1.</small>
       </div>
       <div class="option">
-        <input type="radio" name="mode" id="mode-ai" value="ai">
-        <label for="mode-ai">AI fixes</label>
-        <small>Adds Gemini fix suggestions</small>
+        <input type="checkbox" id="option-2" />
+        <label for="option-2">Option 2</label>
+        <small>Some description for option 2.</small>
       </div>
     </div>
-
-    <button class="scan-btn" id="scan-btn" onclick="startScan()" disabled>
-      Select a file to scan
-    </button>
-
+    <button class="scan-btn" id="scan-btn" disabled>Scan</button>
     <div class="progress-area" id="progress-area">
       <div class="spinner"></div>
-      <div class="progress-text" id="progress-text">Uploading and scanning...</div>
+      <div class="progress-text">Scanning...</div>
     </div>
   </div>
-
-  </div>
+</div>
 
 <div class="features">
   <div class="feature">
-    <div class="feat-icon">&#128273;</div>
-    <h3>Secret detection</h3>
-    <p>Finds hardcoded API keys, tokens, and passwords using regex + entropy scoring across 10 provider formats.</p>
+    <div class="feat-icon">🔍</div>
+    <h3>Feature 1</h3>
+    <p>Some description for feature 1.</p>
   </div>
   <div class="feature">
-    <div class="feat-icon">&#128137;</div>
-    <h3>Injection vulnerabilities</h3>
-Remove eval(). If dynamic execution is needed, use ast.literal_eval() for data or a whitelist approach.
+    <div class="feat-icon">📊</div>
+    <h3>Feature 2</h3>
+    <p>Some description for feature 2.</p>
   </div>
   <div class="feature">
-    <div class="feat-icon">&#128737;</div>
-    <h3>Auth & config issues</h3>
-    <p>Detects client-side auth, missing rate limiting, wildcard CORS, SSL disabled, and debug mode.</p>
+    <div class="feat-icon">🚀</div>
+    <h3>Feature 3</h3>
+    <p>Some description for feature 3.</p>
   </div>
 </div>
 
 <div class="checks">
-  <h3>22+ checks run on every scan</h3>
+  <h3>Checks</h3>
   <div class="check-grid">
-    <div class="check-item">Hardcoded API keys</div>
-    <div class="check-item">Client-side auth</div>
-    <div class="check-item">SQL injection</div>
-    <div class="check-item">eval() with user input</div>
-    <div class="check-item">Exposed DB connections</div>
-    <div class="check-item">Plain-text passwords</div>
-    <div class="check-item">Wildcard CORS</div>
-    <div class="check-item">Missing rate limits</div>
-    <div class="check-item">Public S3 buckets</div>
-    <div class="check-item">Unvalidated uploads</div>
-    <div class="check-item">Debug mode in prod</div>
-    <div class="check-item">High-entropy strings</div>
-    <div class="check-item">Hallucinated packages</div>
-    <div class="check-item">Sensitive data in logs</div>
-    <div class="check-item">SSL verification off</div>
-    <div class="check-item">Unsafe deserialization</div>
-    <div class="check-item">Path traversal</div>
-    <div class="check-item">Non-HTTPS URLs</div>
-    <div class="check-item">Stack trace exposure</div>
-    <div class="check-item">Unsafe YAML load</div>
+    <div class="check-item">
+      <div class="check-icon">🔒</div>
+      <p>Check 1</p>
+    </div>
+    <div class="check-item">
+      <div class="check-icon">🔒</div>
+      <p>Check 2</p>
+    </div>
   </div>
 </div>
 
 <footer>
-  VibeGuard &mdash; built for the vibe-coding era &nbsp;&middot;&nbsp;  <a href="https://github.com/Ali2191/vibeguard" style="color:#888;">GitHub</a>
+  <p>&copy; 2023 VibeGuard</p>
 </footer>
 
 <script>
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-const scanBtn = document.getElementById('scan-btn');
-const fileName = document.getElementById('file-name');
-let selectedFile = null;
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  const fileName = document.getElementById('file-name');
+  const scanBtn = document.getElementById('scan-btn');
+  const progressArea = document.getElementById('progress-area');
 
-fileInput.addEventListener('change', e => {
-  selectedFile = e.target.files[0];
-  if (selectedFile) {
-    fileName.textContent = selectedFile.name;
-    scanBtn.disabled = false;
-    scanBtn.textContent = 'Scan ' + selectedFile.name;
-  }
-});
+  dropZone.addEventListener('click', () => {
+    fileInput.click();
+  });
 
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if (file && file.name.endsWith('.zip')) {
-    selectedFile = file;
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
     fileName.textContent = file.name;
     scanBtn.disabled = false;
-    scanBtn.textContent = 'Scan ' + file.name;
-  }
-});
+  });
 
-async function startScan() {
-  if (!selectedFile) return;
-  const mode = document.querySelector('input[name="mode"]:checked').value;
-  const formData = new FormData();
-  formData.append('file', selectedFile);
-  formData.append('use_ai', mode === 'ai' ? 'true' : 'false');
-
-  scanBtn.style.display = 'none';
-  document.getElementById('progress-area').style.display = 'block';
-
-  const messages = [
-    'Uploading your project...',
-    'Parsing files...',
-    'Running 22+ security checks...',
-    mode === 'ai' ? 'Generating AI fix suggestions...' : 'Generating report...',
-  ];
-  let mi = 0;
-  const ticker = setInterval(() => {
-    if (mi < messages.length - 1) mi++;
-    document.getElementById('progress-text').textContent = messages[mi];
-  }, 2000);
-
-  try {
-    const res = await fetch('/scan', { method: 'POST', body: formData });
-    clearInterval(ticker);
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(err);
-    }
-    const data = await res.json();
-    window.location.href = '/report/' + data.report_id;
-  } catch (err) {
-    clearInterval(ticker);
-    document.getElementById('progress-text').textContent = 'Error: ' + err.message;
-    scanBtn.style.display = 'block';
-    document.getElementById('progress-area').style.display = 'none';
-  }
-}
+  scanBtn.addEventListener('click', () => {
+    progressArea.style.display = 'block';
+    // Call API to scan project
+    fetch('/scan', {
+      method: 'POST',
+      body: new FormData(),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+        progressArea.style.display = 'none';
+      })
+      .catch((error) => {
+        console.error(error);
+        progressArea.style.display = 'none';
+      });
+  });
 </script>
-</body>
-</html>
 """
 
-
-@app.get("/", response_class=HTMLResponse)
-async def landing():
-    return LANDING_HTML
-
+@app.get("/")
+async def get_landing_page():
+    return HTMLResponse(LANDING_HTML)
 
 @app.post("/scan")
-async def scan_endpoint(
-    file: UploadFile = File(...),
-    use_ai: str = Form(default="false")
-):
-    if not file.filename.endswith('.zip'):
-        raise HTTPException(400, "Only ZIP files are supported")
+async def scan_project(file: UploadFile = File(...)):
+    # Generate a unique ID for the report
+    report_id = str(uuid.uuid4())
 
-    report_id = str(uuid.uuid4())[:8]
-    tmp_dir = tempfile.mkdtemp()
+    # Save the uploaded file to a temporary directory
+    temp_dir = tempfile.mkdtemp()
+    file_path = os.path.join(temp_dir, file.filename)
+    with open(file_path, 'wb') as f:
+        f.write(file.file.read())
 
-    try:
-        zip_path = os.path.join(tmp_dir, 'upload.zip')
-        with open(zip_path, 'wb') as f:
-            content = await file.read()
-            f.write(content)
+    # Scan the project
+    report = scan_path(file_path)
 
-        extract_dir = os.path.join(tmp_dir, 'project')
-        os.makedirs(extract_dir)
-        with zipfile.ZipFile(zip_path, 'r') as z:
-            z.extractall(extract_dir)
+    # Generate an HTML report
+    html_report = generate_html_report(report)
 
-        results = scan_path(extract_dir)
-        results['original_filename'] = file.filename
-        results['path'] = file.filename.replace('.zip', '')
+    # Store the report in the in-memory store
+    report_store[report_id] = html_report
 
-        # Force static fixes to prevent hanging - AI mode disabled for reliability
-        if results['findings']:
-            try:
-                # Add timeout protection for explain_all
-                import signal
-                def timeout_handler(signum, frame):
-                    raise TimeoutError("explain_all timed out")
-                
-                signal.signal(signal.SIGALRM, timeout_handler)
-                signal.alarm(10)  # 10 second timeout
-                
-                results['findings'] = explain_all(
-                    results['findings'],
-                    use_ai=False
-                )
-                signal.alarm(0)  # Cancel timeout
-                
-            except TimeoutError:
-                # If explain_all times out, use findings as-is
-                signal.alarm(0)
-                pass
-            except Exception as e:
-                # If any other error, use findings as-is
-                signal.alarm(0)
-                pass
+    # Return the report ID
+    return {"report_id": report_id}
 
-        try:
-            html = generate_html_report(results)
-        except Exception as e:
-            # If HTML generation fails, create a simple fallback
-            html = f"""
-            <html>
-            <head><title>VibeGuard Report</title></head>
-            <body>
-            <h1>VibeGuard Report - {results.get('path', 'Unknown')}</h1>
-            <p>Files scanned: {results.get('files_scanned', 0)}</p>
-            <p>Total findings: {results.get('summary', {}).get('total', 0)}</p>
-            <h2>Findings:</h2>
-            """
-            for finding in results.get('findings', []):
-                html += f"<p><strong>{finding.get('title', 'Unknown')}</strong> ({finding.get('severity', 'unknown')})</p>"
-            html += "</body></html>"
-        report_store[report_id] = html
-
-        return JSONResponse({
-            "report_id": report_id,
-            "summary": results['summary'],
-            "files_scanned": results['files_scanned']
-        })
-
-    except zipfile.BadZipFile:
-        raise HTTPException(400, "Invalid ZIP file")
-    except Exception as e:
-        raise HTTPException(500, f"Scan failed: {str(e)}")
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-@app.get("/report/{report_id}", response_class=HTMLResponse)
+@app.get("/report/{report_id}")
 async def get_report(report_id: str):
-    html = report_store.get(report_id)
-    if not html:
-        raise HTTPException(404, "Report not found or expired — please scan again")
-    return html
+    # Check if the report ID is valid
+    if report_id not in report_store:
+        raise HTTPException(status_code=404, detail="Report not found")
 
-
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "version": "1.0.0", "checks": 22}
-
-# Test vulnerable code
-import subprocess
-def run_command(user_input):
-    result = subprocess.run(f"ls {user_input}", shell=True)
-    return result
+    # Return the report
+    return HTMLResponse(report_store[report_id])

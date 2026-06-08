@@ -1,4 +1,5 @@
 import re
+import ast
 
 SQL_CONCAT_PATTERNS = [
     r'(?i)(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER).{0,60}(\+|%s|\.format\(|f["\'])',

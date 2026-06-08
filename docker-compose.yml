@@ -2,8 +2,7 @@ version: '3'
 services:
   app:
     build: .
-    network_mode: host
-    privileged: true
+    network_mode: "bridge"
     environment:
       - DB_PASSWORD=supersecret123
       - API_KEY=sk_live_abc123def456

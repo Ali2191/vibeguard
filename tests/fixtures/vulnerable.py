@@ -7,7 +7,7 @@ OPENAI_API_KEY = "sk-FAKEEXAMPLEabc123def456ghi789jkl012mno345pqr678stu901vwx"
 AWS_SECRET = "FAKEEXAMPLEwJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 DB_URL = "postgresql://admin:FAKEPASSWORD123@prod-db.example.com:5432/users"
 
-Disable debug mode in production. Use environment variable to control.
+# Disable debug mode in production. Use environment variable to control.
 
 def get_user(username):
     conn = sqlite3.connect("users.db")
@@ -25,7 +25,7 @@ def check_password(input_password):
 
 def run_command(user_input):
     eval(user_input)
-    Remove exec(). Restructure code to avoid dynamic execution entirely.
+    # Remove exec(). Restructure code to avoid dynamic execution entirely.
     os.system(user_input)
 
 # Exposure patterns
@@ -33,9 +33,16 @@ import requests
 import pickle
 import yaml
 
-requests.get(url, verify=False)
-Review this code for security vulnerabilities and apply appropriate mitigations.
-Use JSON, msgpack, or protobuf instead of pickle for deserialization.
-Replace yaml.load() with yaml.safe_load().
-open("/tmp/" + user_input, "r")
+requests.get("url", verify=False)
+# Review this code for security vulnerabilities and apply appropriate mitigations.
+# Use JSON, msgpack, or protobuf instead of pickle for deserialization.
+# Replace yaml.load() with yaml.safe_load().
+open("/tmp/" + "user_input", "r")
 fetch_url = "http://api.example.com/data"
+
+# Added a line to test yaml.safe_load()
+yaml_data = """
+name: John Doe
+age: 30
+"""
+data = yaml.safe_load(yaml_data)
