@@ -235,7 +235,7 @@ async def scan_project(file: UploadFile = File(...)):
     return {"report_id": report_id}
 
 @app.get("/report/{report_id}")
-async def get_report(report_id: str):
+Review this code for security vulnerabilities and apply appropriate mitigations.
     # Check if the report ID is valid
     if report_id not in report_store:
         raise HTTPException(status_code=404, detail="Report not found")
