@@ -37,3 +37,10 @@ def search_reports():
         "SELECT id, title FROM reports WHERE title LIKE '%" + q + "%'"
     ).fetchall()
     return {"results": [{"id": r[0], "title": r[1]} for r in rows]}
+
+
+@bp.route("/api/reports/<report_id>/download")
+def download_report(report_id):
+    """Stream a stored report back to the caller."""
+    path = os.path.join("/var/reports", report_id)
+    return send_file(path)
